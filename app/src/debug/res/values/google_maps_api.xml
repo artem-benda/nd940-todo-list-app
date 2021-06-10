@@ -1,4 +1,24 @@
 <resources>
-<!--    TODO: Before you run your application, you need a Google Maps API key.-->
-    <string name="google_maps_key" templateMergeStrategy="preserve" translatable="false"></string>
+    <!--
+    TODO: Before you run your application, you need a Google Maps API key.
+
+    To get one, follow this link, follow the directions and press "Create" at the end:
+
+    https://console.developers.google.com/flows/enableapi?apiid=maps_android_backend&keyType=CLIENT_SIDE_ANDROID&r=2D:63:E8:50:E6:C1:0E:9E:9F:83:D9:F4:20:F4:A3:26:84:58:A1:B5%3Bru.abenda.wander
+
+    You can also add your credentials to an existing key, using these values:
+
+    Package name:
+    ru.abenda.wander
+
+    SHA-1 certificate fingerprint:
+    2D:63:E8:50:E6:C1:0E:9E:9F:83:D9:F4:20:F4:A3:26:84:58:A1:B5
+
+    Alternatively, follow the directions here:
+    https://developers.google.com/maps/documentation/android/start#get-key
+
+    Once you have your key (it starts with "AIza"), replace the "google_maps_key"
+    string in this file.
+    -->
+    <string name="google_maps_key" templateMergeStrategy="preserve" translatable="false">AIzaSyBKoSgDziLELQCdV3xgaLnNy-lvXDrOmRk</string>
 </resources>

@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "213497676916",
+    "project_id": "nd940-todo-list-app",
+    "storage_bucket": "nd940-todo-list-app.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:213497676916:android:433fc841258c87ce777d21",
+        "android_client_info": {
+          "package_name": "com.udacity.project4"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "213497676916-d7vqp9f261qf8u679lu112qmrpgj9rqn.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.udacity.project4",
+            "certificate_hash": "2d63e850e6c10e9e9f83d9f420f4a3268458a1b5"
+          }
+        },
+        {
+          "client_id": "213497676916-qs9lh278264248sla1v8ho84eg1gbhuq.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC2I_6VI9XJO_Z5OI_BDXwEeEQ7qs4OwqI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "213497676916-qs9lh278264248sla1v8ho84eg1gbhuq.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
