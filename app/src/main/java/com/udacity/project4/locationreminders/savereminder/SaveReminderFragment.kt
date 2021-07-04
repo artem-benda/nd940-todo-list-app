@@ -9,6 +9,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.databinding.DataBindingUtil
 import androidx.lifecycle.Observer
@@ -19,13 +20,14 @@ import com.udacity.project4.base.BaseFragment
 import com.udacity.project4.base.NavigationCommand
 import com.udacity.project4.databinding.FragmentSaveReminderBinding
 import com.udacity.project4.locationreminders.geofence.GeofenceBroadcastReceiver
+import com.udacity.project4.locationreminders.geofence.GeofenceErrorMessages
 import com.udacity.project4.locationreminders.reminderslist.ReminderDataItem
 import com.udacity.project4.utils.createChannel
 import com.udacity.project4.utils.setDisplayHomeAsUpEnabled
 import org.koin.android.ext.android.inject
 import timber.log.Timber
 
-const val GEOFENCE_DEFAULT_RADIUS = 20.0f
+const val GEOFENCE_DEFAULT_RADIUS = 100.0f
 /*
 Managing geofences according to tutorial:
 https://www.raywenderlich.com/7372-geofencing-api-tutorial-for-android
@@ -41,9 +43,9 @@ class SaveReminderFragment : BaseFragment() {
     private val runningQOrLater = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
 
     private val geofencePendingIntent: PendingIntent by lazy {
-        val intent = Intent(context, GeofenceBroadcastReceiver::class.java)
+        val intent = Intent(requireActivity(), GeofenceBroadcastReceiver::class.java)
         PendingIntent.getBroadcast(
-            context,
+            requireActivity(),
             0,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT
@@ -96,7 +98,7 @@ class SaveReminderFragment : BaseFragment() {
                     },
                     {
                         Timber.e(it)
-                        Snackbar.make(view, it, Snackbar.LENGTH_LONG).show()
+                        Toast.makeText(requireContext(), it, Snackbar.LENGTH_LONG).show()
                     }
                 )
             }
@@ -136,7 +138,7 @@ class SaveReminderFragment : BaseFragment() {
                     success()
                 }
                 .addOnFailureListener {
-                    failure("Error")
+                    failure(GeofenceErrorMessages.getErrorString(requireContext(), it))
                 }
         } else {
             Timber.d("Permissions missing, requesting...")
@@ -159,7 +161,9 @@ class SaveReminderFragment : BaseFragment() {
                     longitude,
                     radius
                 )
-                .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER)
+                .setNotificationResponsiveness(10000)
+                .setLoiteringDelay(10000)
+                .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER or Geofence.GEOFENCE_TRANSITION_EXIT)
                 .setExpirationDuration(Geofence.NEVER_EXPIRE)
                 .build()
         }
@@ -169,7 +173,7 @@ class SaveReminderFragment : BaseFragment() {
 
     private fun buildGeofencingRequest(geofence: Geofence): GeofencingRequest {
         return GeofencingRequest.Builder()
-            .setInitialTrigger(0)
+            .setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER)
             .addGeofences(listOf(geofence))
             .build()
     }
@@ -181,11 +185,13 @@ class SaveReminderFragment : BaseFragment() {
     }
 
     private fun foregroundAndBackgroundLocationPermissionApproved(): Boolean {
+        Timber.d("foregroundAndBackgroundLocationPermissionApproved, start, runningQOrLater = %b", runningQOrLater)
         val foregroundPermissionApproved = PackageManager.PERMISSION_GRANTED == ActivityCompat.checkSelfPermission(requireActivity(), Manifest.permission.ACCESS_FINE_LOCATION)
         val backgroundPermissionApproved = if (runningQOrLater)
             PackageManager.PERMISSION_GRANTED == ActivityCompat.checkSelfPermission(requireActivity(), Manifest.permission.ACCESS_BACKGROUND_LOCATION)
         else
             true
+        Timber.d("foregroundAndBackgroundLocationPermissionApproved, result is ${foregroundPermissionApproved && backgroundPermissionApproved}")
         return foregroundPermissionApproved && backgroundPermissionApproved
     }
 
@@ -201,7 +207,35 @@ class SaveReminderFragment : BaseFragment() {
             REQUEST_FOREGROUND_AND_BACKGROUND_PERMISSION_REQUEST_CODE
         else
             REQUEST_FOREGROUND_ONLY_PERMISSIONS_REQUEST_CODE
-        ActivityCompat.requestPermissions(requireActivity(), permissions, requestCode)
+        requestPermissions(permissions, requestCode)
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<String>,
+        grantResults: IntArray
+    ) {
+        if (requestCode == REQUEST_FOREGROUND_AND_BACKGROUND_PERMISSION_REQUEST_CODE) {
+            if (
+                grantResults.isNotEmpty() &&
+                (grantResults[0] == PackageManager.PERMISSION_GRANTED) &&
+                (grantResults[1] == PackageManager.PERMISSION_GRANTED)
+            ) {
+                Timber.i("FOREGROUND_AND_BACKGROUND_PERMISSION granted")
+            } else {
+                Timber.w("FOREGROUND_AND_BACKGROUND_PERMISSION NOT granted")
+            }
+        }
+        if (requestCode == REQUEST_FOREGROUND_ONLY_PERMISSIONS_REQUEST_CODE) {
+            if (
+                grantResults.isNotEmpty() &&
+                (grantResults[0] == PackageManager.PERMISSION_GRANTED)
+            ) {
+                Timber.i("FOREGROUND_ONLY_PERMISSION granted")
+            } else {
+                Timber.w("FOREGROUND_ONLY_PERMISSION NOT granted")
+            }
+        }
     }
 }
 
