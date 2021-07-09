@@ -28,6 +28,7 @@ import org.koin.android.ext.android.inject
 import timber.log.Timber
 
 const val GEOFENCE_DEFAULT_RADIUS = 100.0f
+const val GEOFENCE_EXPIRE_MILLIS = 86400000L
 /*
 Managing geofences according to tutorial:
 https://www.raywenderlich.com/7372-geofencing-api-tutorial-for-android
@@ -161,10 +162,8 @@ class SaveReminderFragment : BaseFragment() {
                     longitude,
                     radius
                 )
-                .setNotificationResponsiveness(10000)
-                .setLoiteringDelay(10000)
                 .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER or Geofence.GEOFENCE_TRANSITION_EXIT)
-                .setExpirationDuration(Geofence.NEVER_EXPIRE)
+                .setExpirationDuration(GEOFENCE_EXPIRE_MILLIS)
                 .build()
         }
 
