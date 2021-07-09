@@ -14,6 +14,7 @@ import androidx.test.espresso.matcher.ViewMatchers.*
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.LargeTest
 import com.udacity.project4.locationreminders.RemindersActivity
+import com.udacity.project4.locationreminders.data.LocalInMemoryDB
 import com.udacity.project4.locationreminders.data.ReminderDataSource
 import com.udacity.project4.locationreminders.data.dto.ReminderDTO
 import com.udacity.project4.locationreminders.data.local.LocalDB
@@ -76,7 +77,7 @@ class RemindersActivityTest :
                 )
             }
             single { RemindersLocalRepository(get()) as ReminderDataSource }
-            single { LocalDB.createRemindersDao(appContext) }
+            single { LocalInMemoryDB.createRemindersDao(appContext) }
         }
         // declare a new koin module
         startKoin {
