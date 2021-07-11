@@ -4,6 +4,7 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.app.PendingIntent
 import android.content.Intent
+import android.content.IntentSender
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -14,6 +15,7 @@ import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.databinding.DataBindingUtil
 import androidx.lifecycle.Observer
+import com.google.android.gms.common.api.ResolvableApiException
 import com.google.android.gms.location.*
 import com.google.android.material.snackbar.Snackbar
 import com.udacity.project4.R
@@ -25,6 +27,7 @@ import com.udacity.project4.locationreminders.geofence.GeofenceErrorMessages
 import com.udacity.project4.locationreminders.reminderslist.ReminderDataItem
 import com.udacity.project4.utils.createChannel
 import com.udacity.project4.utils.setDisplayHomeAsUpEnabled
+import org.koin.android.ext.android.get
 import org.koin.android.ext.android.inject
 import timber.log.Timber
 
@@ -115,7 +118,9 @@ class SaveReminderFragment : BaseFragment() {
         // Create channel for notifications
         createChannel(requireContext())
 
-        checkPermissionsAndRequestIfMissing()
+        checkDeviceLocationSettings {
+            checkPermissionsAndRequestIfMissing()
+        }
     }
 
     override fun onDestroy() {
@@ -134,15 +139,17 @@ class SaveReminderFragment : BaseFragment() {
         if (geofence != null &&
             foregroundAndBackgroundLocationPermissionApproved()
         ) {
-            Timber.d("Have permissions, adding geofence...")
-            geofencingClient
-                .addGeofences(buildGeofencingRequest(geofence), geofencePendingIntent)
-                .addOnSuccessListener {
-                    success()
-                }
-                .addOnFailureListener {
-                    failure(GeofenceErrorMessages.getErrorString(requireContext(), it))
-                }
+            checkDeviceLocationSettings {
+                Timber.d("Have permissions, adding geofence...")
+                geofencingClient
+                    .addGeofences(buildGeofencingRequest(geofence), geofencePendingIntent)
+                    .addOnSuccessListener {
+                        success()
+                    }
+                    .addOnFailureListener {
+                        failure(GeofenceErrorMessages.getErrorString(requireContext(), it))
+                    }
+            }
         } else if (geofence == null) {
             _viewModel.showErrorMessage.value = getString(R.string.err_select_location)
         } else {
@@ -245,7 +252,45 @@ class SaveReminderFragment : BaseFragment() {
             }
         }
     }
+
+    /* This function is similar to the previous excercise - Geofences */
+    private fun checkDeviceLocationSettings(resolve: Boolean = true, onSuccessAction: () -> Unit) {
+        val locationRequest = LocationRequest.create().apply {
+            priority = LocationRequest.PRIORITY_LOW_POWER
+        }
+        val builder = LocationSettingsRequest.Builder().addLocationRequest(locationRequest)
+        val settingsClient = LocationServices.getSettingsClient(requireActivity())
+        val locationSettingsResponseTask =
+            settingsClient.checkLocationSettings(builder.build())
+        locationSettingsResponseTask.addOnFailureListener { exception ->
+            if (exception is ResolvableApiException && resolve) {
+                try {
+                    Timber.w("Resolvable error, starting resolution for result")
+                    exception.startResolutionForResult(
+                        activity,
+                        REQUEST_TURN_DEVICE_LOCATION_ON
+                    )
+                } catch (sendEx: IntentSender.SendIntentException) {
+                    Timber.w(sendEx, "Error getting location settings resolution: %s", sendEx.message)
+                }
+            } else {
+                Timber.w("Non resolvable error")
+                Snackbar.make(
+                    binding.layout, R.string.location_required_error, Snackbar.LENGTH_INDEFINITE
+                ).setAction(android.R.string.ok) {
+                    checkDeviceLocationSettings(onSuccessAction = onSuccessAction)
+                }.show()
+            }
+        }
+        locationSettingsResponseTask.addOnCompleteListener {
+            if (it.isSuccessful) {
+                Timber.i("Executing on success action...")
+                onSuccessAction()
+            }
+        }
+    }
 }
 
 private const val REQUEST_FOREGROUND_AND_BACKGROUND_PERMISSION_REQUEST_CODE = 101
 private const val REQUEST_FOREGROUND_ONLY_PERMISSIONS_REQUEST_CODE = 102
+private const val REQUEST_TURN_DEVICE_LOCATION_ON = 103
