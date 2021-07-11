@@ -6,8 +6,6 @@ import android.content.pm.PackageManager
 import android.content.res.Resources
 import android.os.Bundle
 import android.view.*
-import android.widget.Toast
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.databinding.DataBindingUtil
 import androidx.lifecycle.Observer
@@ -25,6 +23,7 @@ import com.udacity.project4.utils.setDisplayHomeAsUpEnabled
 import org.koin.android.ext.android.inject
 import timber.log.Timber
 import java.lang.IllegalStateException
+import java.util.*
 
 class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
 
@@ -57,7 +56,7 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
             viewLifecycleOwner,
             Observer {
                 it?.let {
-                    Toast.makeText(requireContext(), getString(R.string.selected_poi, it.name), Toast.LENGTH_LONG).show()
+                    Timber.i(getString(R.string.selected_poi, it.name))
                 }
             }
         )
@@ -110,6 +109,7 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
         map.moveCamera(CameraUpdateFactory.zoomBy(zoomLevel))
 
         setPoiClick(map)
+        setLongClick(map)
         setMapStyle(map)
 
         enableMyLocation()
@@ -118,8 +118,39 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
     private fun setPoiClick(map: GoogleMap) {
         map.setOnPoiClickListener { poi ->
             Timber.i("Poi clicked %s", poi)
+            putPin(poi)
             _viewModel.clickedPOI.value = poi
         }
+    }
+
+    private fun setLongClick(map: GoogleMap) {
+        map.setOnMapLongClickListener {
+            Timber.i("Custom location long clicked %s", it)
+            val poi = PointOfInterest(it, "${it.latitude}, ${it.longitude}", getString(R.string.custom_location))
+            putPin(poi)
+
+            _viewModel.clickedPOI.value = poi
+        }
+    }
+
+    private fun putPin(poi: PointOfInterest) {
+        val snippet = String.format(
+            Locale.getDefault(),
+            "Lat: %1$.5f, Long: %2$.5f",
+            poi.latLng.latitude,
+            poi.latLng.longitude
+        )
+
+        map.clear()
+        map
+            .addMarker(
+                MarkerOptions()
+                    .position(poi.latLng)
+                    .title(poi.name)
+                    .snippet(snippet)
+                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE))
+            )
+            .showInfoWindow()
     }
 
     private fun setMapStyle(map: GoogleMap) {
@@ -166,6 +197,8 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
         if (requestCode == REQUEST_LOCATION_PERMISSION) {
             if (grantResults.isNotEmpty() && (grantResults[0] == PackageManager.PERMISSION_GRANTED)) {
                 enableMyLocation()
+            } else {
+                _viewModel.showErrorMessage.value = getString(R.string.location_required_error)
             }
         }
     }

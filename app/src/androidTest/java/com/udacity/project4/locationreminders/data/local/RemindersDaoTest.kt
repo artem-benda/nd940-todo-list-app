@@ -14,8 +14,7 @@ import org.junit.runner.RunWith;
 
 import kotlinx.coroutines.ExperimentalCoroutinesApi;
 import kotlinx.coroutines.test.runBlockingTest
-import org.hamcrest.CoreMatchers.`is`
-import org.hamcrest.CoreMatchers.notNullValue
+import org.hamcrest.CoreMatchers.*
 import org.hamcrest.MatcherAssert.assertThat
 import org.junit.After
 import org.junit.Test
@@ -114,6 +113,15 @@ class RemindersDaoTest {
 
         assertThat(allReminders, notNullValue())
         assertThat(allReminders.size, `is`(0))
+    }
+
+    @Test
+    @ExperimentalCoroutinesApi
+    fun getReminderById_forNonExistentReminder_returnsNull() = runBlockingTest {
+
+        val loaded = database.reminderDao().getReminderById("NON_EXISTENT_REMINDER_ID")
+
+        assertThat(loaded, nullValue())
     }
 
 }

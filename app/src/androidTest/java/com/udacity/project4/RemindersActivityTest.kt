@@ -1,15 +1,16 @@
 package com.udacity.project4
 
+import android.app.Activity
 import android.app.Application
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
-import androidx.lifecycle.Lifecycle
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider.getApplicationContext
-import androidx.test.espresso.Espresso
 import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.IdlingRegistry
-import androidx.test.espresso.action.ViewActions.click
+import androidx.test.espresso.action.ViewActions.*
 import androidx.test.espresso.assertion.ViewAssertions.matches
+import androidx.test.espresso.matcher.RootMatchers.withDecorView
+import androidx.test.espresso.matcher.ViewMatchers
 import androidx.test.espresso.matcher.ViewMatchers.*
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.LargeTest
@@ -17,7 +18,6 @@ import com.udacity.project4.locationreminders.RemindersActivity
 import com.udacity.project4.locationreminders.data.LocalInMemoryDB
 import com.udacity.project4.locationreminders.data.ReminderDataSource
 import com.udacity.project4.locationreminders.data.dto.ReminderDTO
-import com.udacity.project4.locationreminders.data.local.LocalDB
 import com.udacity.project4.locationreminders.data.local.RemindersLocalRepository
 import com.udacity.project4.locationreminders.reminderslist.RemindersListViewModel
 import com.udacity.project4.locationreminders.savereminder.SaveReminderViewModel
@@ -26,8 +26,7 @@ import com.udacity.project4.util.monitorActivity
 import com.udacity.project4.utils.EspressoIdlingResource
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.test.TestCoroutineScope
-import kotlinx.coroutines.test.runBlockingTest
+import org.hamcrest.CoreMatchers.*
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -39,6 +38,7 @@ import org.koin.core.context.stopKoin
 import org.koin.dsl.module
 import org.koin.test.AutoCloseKoinTest
 import org.koin.test.get
+
 
 @ExperimentalCoroutinesApi
 @RunWith(AndroidJUnit4::class)
@@ -54,6 +54,11 @@ class RemindersActivityTest :
 
     @get:Rule
     val instantExecutorRule = InstantTaskExecutorRule()
+
+        /**
+     * As we use Koin as a Service Locator Library to develop our code, we'll also use Koin to test our code.
+     * at this step we will initialize Koin related code to be able to use it in out testing.
+     */
 
     /**
      * As we use Koin as a Service Locator Library to develop our code, we'll also use Koin to test our code.
@@ -106,12 +111,14 @@ class RemindersActivityTest :
 
     //     add End to End testing to the app
     @Test
-    fun recyclerView_showsDataSourceItems(): Unit = runBlocking {
+    fun reminders_e2e(): Unit = runBlocking {
         repository.saveReminder(ReminderDTO("TITLE1", "DESCRIPTION1", "LOCATION1", 11.0, 12.0))
         repository.saveReminder(ReminderDTO("TITLE2", "DESCRIPTION2", "LOCATION2", 21.0, 22.0))
 
         val activityScenario = ActivityScenario.launch(RemindersActivity::class.java)
+
         activityScenario.use { scenario ->
+
             dataBindingIdlingResource.monitorActivity(scenario)
 
             onView(withText("TITLE1")).check(matches(isDisplayed()))
@@ -124,6 +131,37 @@ class RemindersActivityTest :
 
             onView(withId(com.google.android.material.R.id.snackbar_text))
                 .check(matches(withText(R.string.err_enter_title)))
+
+            onView(withId(R.id.reminderTitle)).perform(typeText("A title"))
+            onView(isRoot()).perform(closeSoftKeyboard())
+            onView(withId(R.id.saveReminder)).perform(click())
+
+            onView(withId(com.google.android.material.R.id.snackbar_text))
+                .check(matches(withText(R.string.err_enter_title)))
+
+            onView(withId(R.id.reminderDescription)).perform(typeText("A description"))
+            onView(isRoot()).perform(closeSoftKeyboard())
+
+            onView(withId(R.id.selectLocation)).perform(click())
+            onView(withId(R.id.map)).perform(longClick())
+
+            onView(withId(R.id.saveButton))
+                .check(matches(isEnabled()))
+
+            onView(withId(R.id.saveButton)).perform(click())
+
+            onView(withText(R.string.custom_location)).check(matches(isDisplayed()))
+
+            onView(withId(R.id.saveReminder)).perform(click())
+
+            onView(withText(R.string.custom_location)).check(matches(isDisplayed()))
+
+            onView(withText("A title")).check(matches(isDisplayed()))
+            onView(withText(R.string.custom_location)).check(matches(isDisplayed()))
+
+            // Works only on devices with API level <= 29
+            // See also: https://github.com/android/android-test/issues/803
+            onView(withText(R.string.reminder_saved)).inRoot(withDecorView(not(`is`(dataBindingIdlingResource.activity.window.decorView)))).check(matches(isDisplayed()))
         }
     }
 }

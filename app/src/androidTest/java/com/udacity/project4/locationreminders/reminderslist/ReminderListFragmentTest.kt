@@ -74,18 +74,6 @@ class ReminderListFragmentTest {
             androidContext(ApplicationProvider.getApplicationContext())
             modules(listOf(myModule))
         }
-/*
-        val myModule = module {
-            single { dataSource as ReminderDataSource }
-        }
-
-        loadKoinModules(
-            module(override = true) {
-                single<ReminderDataSource> {
-                    dataSource
-                }
-            }
-        )*/
     }
 
     @After

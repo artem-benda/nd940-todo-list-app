@@ -136,4 +136,16 @@ class RemindersLocalRepositoryTest {
 
         assertThat(result.data.size, `is`(0))
     }
+
+    @Test
+    fun getReminderById_forNonExistentReminder_returnError() = runBlockingTest {
+        // WHEN  - Reminder retrieved by ID.
+        val result = localRepository.getReminder("NON_EXISTENT_ID")
+
+        // THEN - Same reminder is returned.
+        assertThat(result is Result.Error, `is`(true))
+        result as Result.Error
+        assertThat(result.message, CoreMatchers.notNullValue())
+        assertThat(result.message, `is`("Reminder not found!"))
+    }
 }

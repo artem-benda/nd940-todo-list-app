@@ -1,6 +1,7 @@
 package com.udacity.project4.locationreminders.savereminder
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.PendingIntent
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -99,7 +100,7 @@ class SaveReminderFragment : BaseFragment() {
                     },
                     {
                         Timber.e(it)
-                        Toast.makeText(requireContext(), it, Snackbar.LENGTH_LONG).show()
+                        _viewModel.showErrorMessage.value = it
                     }
                 )
             }
@@ -123,6 +124,7 @@ class SaveReminderFragment : BaseFragment() {
         _viewModel.onClear()
     }
 
+    @SuppressLint("MissingPermission")
     private fun addGeofence(
         reminder: ReminderDataItem,
         success: () -> Unit,
@@ -141,8 +143,11 @@ class SaveReminderFragment : BaseFragment() {
                 .addOnFailureListener {
                     failure(GeofenceErrorMessages.getErrorString(requireContext(), it))
                 }
+        } else if (geofence == null) {
+            _viewModel.showErrorMessage.value = getString(R.string.err_select_location)
         } else {
             Timber.d("Permissions missing, requesting...")
+            _viewModel.showErrorMessage.value = getString(R.string.location_required_error)
             requestForegroundAndBackgroundLocationPermissions()
         }
     }
@@ -163,7 +168,7 @@ class SaveReminderFragment : BaseFragment() {
                     radius
                 )
                 .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER or Geofence.GEOFENCE_TRANSITION_EXIT)
-                .setExpirationDuration(GEOFENCE_EXPIRE_MILLIS)
+                .setExpirationDuration(Geofence.NEVER_EXPIRE)
                 .build()
         }
 
@@ -183,6 +188,7 @@ class SaveReminderFragment : BaseFragment() {
         }
     }
 
+    @SuppressLint("InlinedApi")
     private fun foregroundAndBackgroundLocationPermissionApproved(): Boolean {
         Timber.d("foregroundAndBackgroundLocationPermissionApproved, start, runningQOrLater = %b", runningQOrLater)
         val foregroundPermissionApproved = PackageManager.PERMISSION_GRANTED == ActivityCompat.checkSelfPermission(requireActivity(), Manifest.permission.ACCESS_FINE_LOCATION)
@@ -194,6 +200,7 @@ class SaveReminderFragment : BaseFragment() {
         return foregroundPermissionApproved && backgroundPermissionApproved
     }
 
+    @SuppressLint("InlinedApi")
     private fun requestForegroundAndBackgroundLocationPermissions() {
         if (foregroundAndBackgroundLocationPermissionApproved())
             return
@@ -223,6 +230,7 @@ class SaveReminderFragment : BaseFragment() {
                 Timber.i("FOREGROUND_AND_BACKGROUND_PERMISSION granted")
             } else {
                 Timber.w("FOREGROUND_AND_BACKGROUND_PERMISSION NOT granted")
+                _viewModel.showErrorMessage.value = getString(R.string.location_required_error)
             }
         }
         if (requestCode == REQUEST_FOREGROUND_ONLY_PERMISSIONS_REQUEST_CODE) {
@@ -233,6 +241,7 @@ class SaveReminderFragment : BaseFragment() {
                 Timber.i("FOREGROUND_ONLY_PERMISSION granted")
             } else {
                 Timber.w("FOREGROUND_ONLY_PERMISSION NOT granted")
+                _viewModel.showErrorMessage.value = getString(R.string.location_required_error)
             }
         }
     }
