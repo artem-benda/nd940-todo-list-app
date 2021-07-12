@@ -11,7 +11,6 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.databinding.DataBindingUtil
 import androidx.lifecycle.Observer
@@ -57,6 +56,32 @@ class SaveReminderFragment : BaseFragment() {
         )
     }
 
+    private val onSaveClickListener = View.OnClickListener {
+        Timber.i("saveReminder fab clicked")
+        val title = _viewModel.reminderTitle.value
+        val description = _viewModel.reminderDescription.value
+        val location = _viewModel.reminderSelectedLocationStr.value
+        val latitude = _viewModel.latitude.value
+        val longitude = _viewModel.longitude.value
+
+        val reminderItem = ReminderDataItem(title, description, location, latitude, longitude)
+
+        if (_viewModel.validateEnteredData(reminderItem)) {
+            Timber.i("Trying to add geofence...")
+            addGeofence(
+                reminderItem,
+                {
+                    Timber.i("Geofence added successfully, saving reminder...")
+                    _viewModel.saveReminder(reminderItem)
+                },
+                {
+                    Timber.e(it)
+                    _viewModel.showErrorMessage.value = it
+                }
+            )
+        }
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -83,31 +108,7 @@ class SaveReminderFragment : BaseFragment() {
                 NavigationCommand.To(SaveReminderFragmentDirections.actionSaveReminderFragmentToSelectLocationFragment())
         }
 
-        binding.saveReminder.setOnClickListener {
-            Timber.i("saveReminder fab clicked")
-            val title = _viewModel.reminderTitle.value
-            val description = _viewModel.reminderDescription.value
-            val location = _viewModel.reminderSelectedLocationStr.value
-            val latitude = _viewModel.latitude.value
-            val longitude = _viewModel.longitude.value
-
-            val reminderItem = ReminderDataItem(title, description, location, latitude, longitude)
-
-            if (_viewModel.validateEnteredData(reminderItem)) {
-                Timber.i("Trying to add geofence...")
-                addGeofence(
-                    reminderItem,
-                    {
-                        Timber.i("Geofence added successfully, saving reminder...")
-                        _viewModel.saveReminder(reminderItem)
-                    },
-                    {
-                        Timber.e(it)
-                        _viewModel.showErrorMessage.value = it
-                    }
-                )
-            }
-        }
+        binding.saveReminder.setOnClickListener(onSaveClickListener)
 
         _viewModel.selectedPOI.observe(viewLifecycleOwner, Observer { })
         _viewModel.latitude.observe(viewLifecycleOwner, Observer { })
@@ -117,10 +118,6 @@ class SaveReminderFragment : BaseFragment() {
 
         // Create channel for notifications
         createChannel(requireContext())
-
-        checkDeviceLocationSettings {
-            checkPermissionsAndRequestIfMissing()
-        }
     }
 
     override fun onDestroy() {
@@ -234,7 +231,8 @@ class SaveReminderFragment : BaseFragment() {
                 (grantResults[0] == PackageManager.PERMISSION_GRANTED) &&
                 (grantResults[1] == PackageManager.PERMISSION_GRANTED)
             ) {
-                Timber.i("FOREGROUND_AND_BACKGROUND_PERMISSION granted")
+                Timber.i("FOREGROUND_AND_BACKGROUND_PERMISSION granted, proceeding saving...")
+                onSaveClickListener.onClick(binding.saveReminder)
             } else {
                 Timber.w("FOREGROUND_AND_BACKGROUND_PERMISSION NOT granted")
                 _viewModel.showErrorMessage.value = getString(R.string.location_required_error)
@@ -245,7 +243,8 @@ class SaveReminderFragment : BaseFragment() {
                 grantResults.isNotEmpty() &&
                 (grantResults[0] == PackageManager.PERMISSION_GRANTED)
             ) {
-                Timber.i("FOREGROUND_ONLY_PERMISSION granted")
+                Timber.i("FOREGROUND_ONLY_PERMISSION granted, proceeding saving...")
+                onSaveClickListener.onClick(binding.saveReminder)
             } else {
                 Timber.w("FOREGROUND_ONLY_PERMISSION NOT granted")
                 _viewModel.showErrorMessage.value = getString(R.string.location_required_error)
@@ -266,10 +265,8 @@ class SaveReminderFragment : BaseFragment() {
             if (exception is ResolvableApiException && resolve) {
                 try {
                     Timber.w("Resolvable error, starting resolution for result")
-                    exception.startResolutionForResult(
-                        activity,
-                        REQUEST_TURN_DEVICE_LOCATION_ON
-                    )
+                    startIntentSenderForResult(exception.resolution.intentSender,
+                        REQUEST_TURN_DEVICE_LOCATION_ON, null, 0, 0, 0, null)
                 } catch (sendEx: IntentSender.SendIntentException) {
                     Timber.w(sendEx, "Error getting location settings resolution: %s", sendEx.message)
                 }
@@ -286,6 +283,16 @@ class SaveReminderFragment : BaseFragment() {
             if (it.isSuccessful) {
                 Timber.i("Executing on success action...")
                 onSuccessAction()
+            }
+        }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQUEST_TURN_DEVICE_LOCATION_ON) {
+            // Check location settings and try to proceed saving reminder on success. We don't ask user if he refused turning locations on
+            checkDeviceLocationSettings(false) {
+                onSaveClickListener.onClick(binding.saveReminder)
             }
         }
     }
