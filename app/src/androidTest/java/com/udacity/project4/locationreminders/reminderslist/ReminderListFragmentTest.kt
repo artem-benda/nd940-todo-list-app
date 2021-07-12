@@ -66,7 +66,6 @@ class ReminderListFragmentTest {
                 )
             }
             single { dataSource as ReminderDataSource }
-            single { dataSource as RemindersLocalRepository }
             single { LocalDB.createRemindersDao(ApplicationProvider.getApplicationContext()) }
         }
 
